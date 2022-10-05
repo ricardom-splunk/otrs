@@ -1,0 +1,320 @@
+{
+    "appid": "ab36b61e-c053-4bef-a583-8eeb5a289b4c",
+    "name": "OTRS",
+    "description": "Integration with OTRS ticketing system, using the PyOTRS library. Implements basic ticket creation/update handling and other tasks.",
+    "type": "ticketing",
+    "product_vendor": "OTRS AG",
+    "logo": "otrs.png",
+    "logo_dark": "otrs_dark.png",
+    "product_name": "OTRS",
+    "python_version": "3",
+    "product_version_regex": ".*",
+    "publisher": "Splunk",
+    "license": "Copyright (c) Splunk, 2022",
+    "app_version": "1.0.0",
+    "utctime_updated": "2022-10-05T10:45:15.732589Z",
+    "package_name": "phantom_otrs",
+    "main_module": "otrs_connector.py",
+    "min_phantom_version": "5.2.1.78411",
+    "app_wizard_version": "1.0.0",
+    "configuration": {},
+    "actions": [
+        {
+            "action": "test connectivity",
+            "identifier": "test_connectivity",
+            "description": "Validate the asset configuration for connectivity using supplied configuration",
+            "verbose": "",
+            "type": "test",
+            "read_only": true,
+            "parameters": {},
+            "output": [],
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "create ticket",
+            "identifier": "create_ticket",
+            "description": "Create a ticket (issue)",
+            "verbose": "",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "ticket_title": {
+                    "description": "Ticket title",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": true,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 0,
+                    "name": "ticket_title"
+                },
+                "ticket_customer_username": {
+                    "description": "Customer user name",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 1,
+                    "name": "ticket_customer_username"
+                },
+                "ticket_priority": {
+                    "description": "Ticket priority",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 2,
+                    "name": "ticket_priority"
+                },
+                "ticket_state": {
+                    "description": "Ticket state",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 3,
+                    "name": "ticket_state"
+                },
+                "ticket_queue": {
+                    "description": "Ticket queue",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [
+                        "vault id"
+                    ],
+                    "value_list": [],
+                    "default": "",
+                    "order": 4,
+                    "name": "ticket_queue"
+                },
+                "article_subject": {
+                    "description": "Article subject",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 5,
+                    "name": "article_subject"
+                },
+                "article_body": {
+                    "description": "Article body",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 6,
+                    "name": "article_body"
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.parameter.ticket_title",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_title",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.parameter.ticket_customer_username",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_customer_username",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.parameter.ticket_priority",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_priority",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.parameter.ticket_state",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_state",
+                    "column_order": 3
+                },
+                {
+                    "data_path": "action_result.parameter.ticket_queue",
+                    "data_type": "string",
+                    "contains": [
+                        "vault id"
+                    ],
+                    "column_name": "ticket_queue",
+                    "column_order": 4
+                },
+                {
+                    "data_path": "action_result.parameter.article_subject",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "article_subject",
+                    "column_order": 5
+                },
+                {
+                    "data_path": "action_result.parameter.article_body",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "article_body",
+                    "column_order": 6
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 7
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "update ticket",
+            "identifier": "update_ticket",
+            "description": "Update ticket (issue)",
+            "verbose": "",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "ticket_id": {
+                    "description": "Ticket ID",
+                    "data_type": "string",
+                    "required": true,
+                    "primary": true,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 0,
+                    "name": "ticket_id"
+                },
+                "ticket_title": {
+                    "description": "Ticket title",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 1,
+                    "name": "ticket_title"
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.parameter.ticket_id",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_id",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.parameter.ticket_title",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_title",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 2
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "get ticket",
+            "identifier": "get_ticket",
+            "description": "Get ticket (issue) information",
+            "verbose": "",
+            "type": "generic",
+            "read_only": true,
+            "parameters": {
+                "ticket_id": {
+                    "description": "Ticket ID",
+                    "data_type": "string",
+                    "required": true,
+                    "primary": true,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 0,
+                    "name": "ticket_id"
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.parameter.ticket_id",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_id",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
+        }
+    ]
+}
