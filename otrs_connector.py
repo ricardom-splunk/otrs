@@ -4,10 +4,8 @@
 # Phantom sample App Connector python file
 # -----------------------------------------
 
-# Python 3 Compatibility imports
-from __future__ import print_function, unicode_literals
-
 # Phantom App imports
+from urllib import response
 import phantom.app as phantom
 from phantom.base_connector import BaseConnector
 from phantom.action_result import ActionResult
@@ -17,27 +15,22 @@ from phantom.action_result import ActionResult
 import requests
 import json
 from bs4 import BeautifulSoup
+from otrs_utils import Otrs
+from pyotrs import Client, Ticket, Article
 
 
 class RetVal(tuple):
-
     def __new__(cls, val1, val2=None):
         return tuple.__new__(RetVal, (val1, val2))
-
 
 class OtrsConnector(BaseConnector):
 
     def __init__(self):
-
         # Call the BaseConnectors init first
         super(OtrsConnector, self).__init__()
 
         self._state = None
-
-        # Variable to hold a base_url in case the app makes REST calls
-        # Do note that the app json defines the asset config, so please
-        # modify this as you deem fit.
-        self._base_url = None
+        self.config = None
 
     def _process_empty_response(self, response, action_result):
         if response.status_code == 200:
@@ -160,107 +153,115 @@ class OtrsConnector(BaseConnector):
         # Add an action result object to self (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
-        # NOTE: test connectivity does _NOT_ take any parameters
-        # i.e. the param dictionary passed to this handler will be empty.
-        # Also typically it does not add any data into an action_result either.
-        # The status and progress messages are more important.
-
-        self.save_progress("Connecting to endpoint")
-        # make rest call
-        ret_val, response = self._make_rest_call(
-            '/endpoint', action_result, params=None, headers=None
-        )
-
+        self.save_progress("Connecting to API")
+        try:
+            ret_val = self.client.session_restore_or_create()
+        except Exception as exc:
+            ret_val = False
+        
         if phantom.is_fail(ret_val):
-            # the call to the 3rd party device or service failed, action result should contain all the error details
-            # for now the return is commented out, but after implementation, return from here
             self.save_progress("Test Connectivity Failed.")
-            # return action_result.get_status()
+            return action_result.set_status(phantom.APP_ERROR)
 
         # Return success
-        # self.save_progress("Test Connectivity Passed")
-        # return action_result.set_status(phantom.APP_SUCCESS)
+        self.save_progress("Test Connectivity Passed.")
+        return action_result.set_status(phantom.APP_SUCCESS)
 
-        # For now return Error with a message, in case of success we don't set the message, but use the summary
-        return action_result.set_status(phantom.APP_ERROR, "Action not yet implemented")
+    def _handle_create_article(self, param):
+        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+
+        try:
+            # Add an action result object to self (BaseConnector) to represent the action for this param
+            action_result = self.add_action_result(ActionResult(dict(param)))
+            subject = param.get('article_subject', '')
+            body = param.get('article_body', '')
+
+            article = Article(
+                {
+                    'Subject'   : subject,
+                    'Body'      : body, 
+                    'MimeType'  : 'text/html'
+                    }
+                )
+
+            action_result.add_data(article.to_dct())
+            ret_val = True
+        except:
+            ret_val = False
+                    
+        if phantom.is_fail(ret_val):
+            pass 
+
+        action_result.set_status(phantom.APP_SUCCESS)
+        return article
 
     def _handle_create_ticket(self, param):
-        # Implement the handler here
-        # use self.save_progress(...) to send progress messages back to the platform
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
-
-        # Add an action result object to self (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
-        # Access action parameters passed in the 'param' dictionary
+        title = param.get('ticket_title', '')
+        customer_username = param.get('ticket_customer_username', '')
+        priority = param.get('ticket_priority', '')
+        state = param.get('ticket_state', '')
+        queue = param.get('ticket_queue', '')
+        type_id = param.get('ticket_type_id', '')
+        
+        article = self._handle_create_article(param)
 
-        # Required values can be accessed directly
-        # required_parameter = param['required_parameter']
-
-        # Optional values should use the .get() function
-        ticket_title = param.get('ticket_title', '')
-        ticket_customer_username = param.get('ticket_customer_username', '')
-        ticket_priority = param.get('ticket_priority', '')
-        ticket_state = param.get('ticket_state', '')
-        ticket_queue = param.get('ticket_queue', '')
-        article_subject = param.get('article_subject', '')
-        article_body = param.get('article_body', '')
-
-        # make rest call
-        ret_val, response = self._make_rest_call(
-            '/endpoint', action_result, params=None, headers=None
+        ticket = Ticket.create_basic(
+            Title        = title,
+            Queue        = queue,
+            State        = state,
+            PriorityID   = priority,
+            CustomerUser = customer_username,
+            TypeID       = type_id
         )
+        try:
+            if self.client.session_restore_or_create():    
+                created_ticket = self.client.ticket_create(ticket, article)
+                action_result.add_data({"TicketID": created_ticket['TicketID']})
+                ret_val = True
+        except:
+            ret_val = False
 
         if phantom.is_fail(ret_val):
-            # the call to the 3rd party device or service failed, action result should contain all the error details
-            # for now the return is commented out, but after implementation, return from here
-            # return action_result.get_status()
-            pass
+            return action_result.set_status(phantom.APP_ERROR)
 
-        # Now post process the data,  uncomment code as you deem fit
-
-        # Add the response into the data section
-        action_result.add_data(response)
-
-        # Add a dictionary that is made up of the most important values from data into the summary
-        # summary = action_result.update_summary({})
-        # summary['num_data'] = len(action_result['data'])
-
-        # Return success, no need to set the message, only the status
-        # BaseConnector will create a textual message based off of the summary dictionary
-        # return action_result.set_status(phantom.APP_SUCCESS)
-
-        # For now return Error with a message, in case of success we don't set the message, but use the summary
-        return action_result.set_status(phantom.APP_ERROR, "Action not yet implemented")
+        return action_result.set_status(phantom.APP_SUCCESS)
 
     def _handle_update_ticket(self, param):
-        # Implement the handler here
-        # use self.save_progress(...) to send progress messages back to the platform
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
-        # Add an action result object to self (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
 
-        # Access action parameters passed in the 'param' dictionary
-
-        # Required values can be accessed directly
         ticket_id = param['ticket_id']
+        
+        priority = param.get('ticket_priority', None)
+        if priority:
+            priority_id = self._priority_mapping(priority)
+        else:
+            priority_id = None
+        
+        state = param.get('ticket_state', None)
 
-        # Optional values should use the .get() function
-        ticket_title = param.get('ticket_title', '')
+        subject = param.get('article_subject', '')
+        body = param.get('article_body', '')
+        
+        article = None
+        if subject and body:
+            article = self._handle_create_article(param)
 
-        # make rest call
-        ret_val, response = self._make_rest_call(
-            '/endpoint', action_result, params=None, headers=None
-        )
-
+        lock = param['lock']
+        try:
+            self.client.session_restore_or_create()
+            response = self.client.ticket_update(ticket_id, article=article, Lock=lock, PriorityID=priority_id)
+            ret_val = True
+        except:
+            ret_val = False
+               
         if phantom.is_fail(ret_val):
-            # the call to the 3rd party device or service failed, action result should contain all the error details
-            # for now the return is commented out, but after implementation, return from here
-            # return action_result.get_status()
-            pass
+            return action_result.set_status(phantom.APP_ERROR)
 
-        # Now post process the data,  uncomment code as you deem fit
 
         # Add the response into the data section
         action_result.add_data(response)
@@ -269,55 +270,52 @@ class OtrsConnector(BaseConnector):
         # summary = action_result.update_summary({})
         # summary['num_data'] = len(action_result['data'])
 
-        # Return success, no need to set the message, only the status
-        # BaseConnector will create a textual message based off of the summary dictionary
-        # return action_result.set_status(phantom.APP_SUCCESS)
+        return action_result.set_status(phantom.APP_SUCCESS)
 
-        # For now return Error with a message, in case of success we don't set the message, but use the summary
-        return action_result.set_status(phantom.APP_ERROR, "Action not yet implemented")
 
-    def _handle_get_ticket(self, param):
-        # Implement the handler here
-        # use self.save_progress(...) to send progress messages back to the platform
-        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+    def _priority_mapping(self, input):
+        PRIORITY_MAPPING = {
+                "INFO": "1", 
+                "LOW": "2",
+                "MEDIUM": "3",
+                "HIGH": "4",
+                "CRITICAL": "5"
+        }
 
-        # Add an action result object to self (BaseConnector) to represent the action for this param
-        action_result = self.add_action_result(ActionResult(dict(param)))
-
-        # Access action parameters passed in the 'param' dictionary
-
-        # Required values can be accessed directly
-        ticket_id = param['ticket_id']
-
-        # Optional values should use the .get() function
-        # optional_parameter = param.get('optional_parameter', 'default_value')
-
-        # make rest call
-        ret_val, response = self._make_rest_call(
-            '/endpoint', action_result, params=None, headers=None
-        )
-
-        if phantom.is_fail(ret_val):
-            # the call to the 3rd party device or service failed, action result should contain all the error details
-            # for now the return is commented out, but after implementation, return from here
-            # return action_result.get_status()
+        priority = None
+        try:
+            # check if the input string starts with an integer
+            priority = int(input[0])
+        except ValueError:
             pass
 
-        # Now post process the data,  uncomment code as you deem fit
+        if not priority:
+            try:
+                # otherwise try to map the string to a known priority value
+                priority = int(PRIORITY_MAPPING[input])
+            except KeyError:
+                raise ValueError("Invalid input")
+            
 
-        # Add the response into the data section
-        action_result.add_data(response)
+        if priority > 0 and priority < 6:
+            return priority
+        
+        raise IndexError(f"Invalid Priority: {priority}. Needs to be between 1 and 5.")
 
-        # Add a dictionary that is made up of the most important values from data into the summary
-        # summary = action_result.update_summary({})
-        # summary['num_data'] = len(action_result['data'])
+    def _get_ticket(self, ticket_id):
+        # Returns a Ticket object: <class 'pyotrs.lib.Ticket'>
+        if self.client.session_restore_or_create():    
+            return self.client.ticket_get_by_id(ticket_id, articles=True)         
 
-        # Return success, no need to set the message, only the status
-        # BaseConnector will create a textual message based off of the summary dictionary
-        # return action_result.set_status(phantom.APP_SUCCESS)
-
-        # For now return Error with a message, in case of success we don't set the message, but use the summary
-        return action_result.set_status(phantom.APP_ERROR, "Action not yet implemented")
+    def _ticket_locked(self, ticket_id):
+        # Checks if ticket is locked
+        if self.client.session_restore_or_create():
+            tkt = self._get_ticket(ticket_id)
+            if tkt.fields['Lock'] == 'lock':
+                return True
+            elif tkt.fields['Lock'] == 'unlock':
+                return False
+            raise KeyError("Could not get ticket Lock status")
 
     def handle_action(self, param):
         ret_val = phantom.APP_SUCCESS
@@ -333,9 +331,6 @@ class OtrsConnector(BaseConnector):
         if action_id == 'update_ticket':
             ret_val = self._handle_update_ticket(param)
 
-        if action_id == 'get_ticket':
-            ret_val = self._handle_get_ticket(param)
-
         if action_id == 'test_connectivity':
             ret_val = self._handle_test_connectivity(param)
 
@@ -347,7 +342,7 @@ class OtrsConnector(BaseConnector):
         self._state = self.load_state()
 
         # get the asset config
-        config = self.get_config()
+        self.config = self.get_config()
         """
         # Access values in asset config by the name
 
@@ -358,9 +353,16 @@ class OtrsConnector(BaseConnector):
         optional_config_name = config.get('optional_config_name')
         """
 
-        self._base_url = config.get('base_url')
+        try:
+            self._base_url = self.config['base_url']
+            self.client = Client(self._base_url,
+                username=self.config['username'],
+                password=self.config['password'],
+                https_verify=self.config['https_verify'])
 
-        return phantom.APP_SUCCESS
+            return phantom.APP_SUCCESS
+        except Exception:
+            return phantom.APP_ERROR
 
     def finalize(self):
         # Save the state, this data is saved across actions and app upgrades
