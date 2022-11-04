@@ -15,7 +15,6 @@ from phantom.action_result import ActionResult
 import requests
 import json
 from bs4 import BeautifulSoup
-from otrs_utils import Otrs
 from pyotrs import Client, Ticket, Article
 
 
@@ -152,7 +151,6 @@ class OtrsConnector(BaseConnector):
     def _handle_test_connectivity(self, param):
         # Add an action result object to self (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
-
         self.save_progress("Connecting to API")
         try:
             ret_val = self.client.session_restore_or_create()
@@ -167,7 +165,7 @@ class OtrsConnector(BaseConnector):
         self.save_progress("Test Connectivity Passed.")
         return action_result.set_status(phantom.APP_SUCCESS)
 
-    def _handle_create_article(self, param):
+    def _create_article(self, param):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
 
         try:
@@ -201,18 +199,22 @@ class OtrsConnector(BaseConnector):
 
         title = param.get('ticket_title', '')
         customer_username = param.get('ticket_customer_username', '')
-        priority = param.get('ticket_priority', '')
         state = param.get('ticket_state', '')
         queue = param.get('ticket_queue', '')
         type_id = param.get('ticket_type_id', '')
+        priority = param.get('ticket_priority', None)
+        if priority:
+            priority_id = self._priority_mapping(priority)
+        else:
+            priority_id = None
         
-        article = self._handle_create_article(param)
+        article = self._create_article(param)
 
         ticket = Ticket.create_basic(
             Title        = title,
             Queue        = queue,
             State        = state,
-            PriorityID   = priority,
+            PriorityID   = priority_id,
             CustomerUser = customer_username,
             TypeID       = type_id
         )
@@ -231,7 +233,6 @@ class OtrsConnector(BaseConnector):
 
     def _handle_update_ticket(self, param):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
-
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         ticket_id = param['ticket_id']
@@ -249,7 +250,7 @@ class OtrsConnector(BaseConnector):
         
         article = None
         if subject and body:
-            article = self._handle_create_article(param)
+            article = self._create_article(param)
 
         lock = param['lock']
         try:
@@ -261,17 +262,9 @@ class OtrsConnector(BaseConnector):
                
         if phantom.is_fail(ret_val):
             return action_result.set_status(phantom.APP_ERROR)
-
-
-        # Add the response into the data section
         action_result.add_data(response)
-
-        # Add a dictionary that is made up of the most important values from data into the summary
-        # summary = action_result.update_summary({})
-        # summary['num_data'] = len(action_result['data'])
-
+        
         return action_result.set_status(phantom.APP_SUCCESS)
-
 
     def _priority_mapping(self, input):
         PRIORITY_MAPPING = {

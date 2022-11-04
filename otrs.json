@@ -109,7 +109,7 @@
                     "required": false,
                     "primary": false,
                     "contains": [],
-                    "value_list": [],
+                    "value_list": ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"],
                     "default": "",
                     "order": 2,
                     "name": "ticket_priority"
