@@ -11,8 +11,8 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) Splunk, 2022",
-    "app_version": "1.0.0",
-    "utctime_updated": "2022-10-05T10:45:15.732589Z",
+    "app_version": "0.0.2-fdse",
+    "utctime_updated": "2022-11-15T16:45:15.732589Z",
     "package_name": "phantom_otrs",
     "main_module": "otrs_connector.py",
     "min_phantom_version": "5.2.1.78411",
@@ -54,6 +54,10 @@
             {
                 "module": "requests",
                 "input_file": "wheels/shared/requests-2.27.0-py2.py3-none-any.whl"
+            },
+            {
+                "module": "deprecation",
+                "input_file": "wheels/shared/deprecation-2.1.0-py2.py3-none-any.whl"
             },
             {
                 "module": "PyOTRS",
@@ -120,7 +124,7 @@
                     "required": false,
                     "primary": false,
                     "contains": [],
-                    "value_list": [],
+                    "value_list": ["closed successful", "closed unsuccessful", "merged", "new", "open", "pending auto close+", "pending auto close-", "pending reminder", "removed"],
                     "default": "new",
                     "order": 3,
                     "name": "ticket_state"
@@ -170,6 +174,17 @@
                     "default": "",
                     "order": 7,
                     "name": "article_body"
+                },
+                "dynamic_fields": {
+                    "description": "Dynamic Fields",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 8,
+                    "name": "dynamic_fields"
                 }
             },
             "output": [
@@ -284,7 +299,7 @@
                     "required": false,
                     "primary": false,
                     "contains": [],
-                    "value_list": [],
+                    "value_list": ["closed successful", "closed unsuccessful", "merged", "new", "open", "pending auto close+", "pending auto close-", "pending reminder", "removed"],
                     "default": "",
                     "order": 2,
                     "name": "ticket_state"
@@ -321,6 +336,17 @@
                     "default": "",
                     "order": 5,
                     "name": "article_body"
+                },
+                "dynamic_fields": {
+                    "description": "Dynamic Fields",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 6,
+                    "name": "dynamic_fields"
                 }
             },
             "output": [
@@ -343,6 +369,91 @@
                     "data_type": "string",
                     "column_name": "status",
                     "column_order": 2
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "set ticket pending",
+            "identifier": "set_ticket_pending",
+            "description": "Set ticket as pending",
+            "verbose": "",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "ticket_id": {
+                    "description": "Ticket ID",
+                    "data_type": "string",
+                    "required": true,
+                    "primary": true,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 0,
+                    "name": "ticket_id"
+                },
+                "new_state": {
+                    "description": "New state",
+                    "data_type": "string",
+                    "required": true,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": ["pending reminder", "pending auto close+", "pending auto close-"],
+                    "default": "pending reminder",
+                    "order": 1,
+                    "name": "new_state"
+                },
+                "pending_days": {
+                    "description": "Pending days",
+                    "data_type": "numeric",
+                    "required": true,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": 1,
+                    "order": 2,
+                    "name": "pending_days"
+                },
+                "pending_hours": {
+                    "description": "Pending hours",
+                    "data_type": "numeric",
+                    "required": true,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "0",
+                    "order": 3,
+                    "name": "locked"
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.parameter.ticket_id",
+                    "data_type": "string",
+                    "contains": [],
+                    "column_name": "ticket_id",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 1
                 },
                 {
                     "data_path": "action_result.message",

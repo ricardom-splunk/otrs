@@ -15,7 +15,7 @@ from phantom.action_result import ActionResult
 import requests
 import json
 from bs4 import BeautifulSoup
-from pyotrs import Client, Ticket, Article
+from pyotrs import Client, Ticket, Article, DynamicField
 
 
 class RetVal(tuple):
@@ -30,123 +30,6 @@ class OtrsConnector(BaseConnector):
 
         self._state = None
         self.config = None
-
-    def _process_empty_response(self, response, action_result):
-        if response.status_code == 200:
-            return RetVal(phantom.APP_SUCCESS, {})
-
-        return RetVal(
-            action_result.set_status(
-                phantom.APP_ERROR, "Empty response and no information in the header"
-            ), None
-        )
-
-    def _process_html_response(self, response, action_result):
-        # An html response, treat it like an error
-        status_code = response.status_code
-
-        try:
-            soup = BeautifulSoup(response.text, "html.parser")
-            error_text = soup.text
-            split_lines = error_text.split('\n')
-            split_lines = [x.strip() for x in split_lines if x.strip()]
-            error_text = '\n'.join(split_lines)
-        except:
-            error_text = "Cannot parse error details"
-
-        message = "Status Code: {0}. Data from server:\n{1}\n".format(status_code, error_text)
-
-        message = message.replace(u'{', '{{').replace(u'}', '}}')
-        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-    def _process_json_response(self, r, action_result):
-        # Try a json parse
-        try:
-            resp_json = r.json()
-        except Exception as e:
-            return RetVal(
-                action_result.set_status(
-                    phantom.APP_ERROR, "Unable to parse JSON response. Error: {0}".format(str(e))
-                ), None
-            )
-
-        # Please specify the status codes here
-        if 200 <= r.status_code < 399:
-            return RetVal(phantom.APP_SUCCESS, resp_json)
-
-        # You should process the error returned in the json
-        message = "Error from server. Status Code: {0} Data from server: {1}".format(
-            r.status_code,
-            r.text.replace(u'{', '{{').replace(u'}', '}}')
-        )
-
-        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-    def _process_response(self, r, action_result):
-        # store the r_text in debug data, it will get dumped in the logs if the action fails
-        if hasattr(action_result, 'add_debug_data'):
-            action_result.add_debug_data({'r_status_code': r.status_code})
-            action_result.add_debug_data({'r_text': r.text})
-            action_result.add_debug_data({'r_headers': r.headers})
-
-        # Process each 'Content-Type' of response separately
-
-        # Process a json response
-        if 'json' in r.headers.get('Content-Type', ''):
-            return self._process_json_response(r, action_result)
-
-        # Process an HTML response, Do this no matter what the api talks.
-        # There is a high chance of a PROXY in between phantom and the rest of
-        # world, in case of errors, PROXY's return HTML, this function parses
-        # the error and adds it to the action_result.
-        if 'html' in r.headers.get('Content-Type', ''):
-            return self._process_html_response(r, action_result)
-
-        # it's not content-type that is to be parsed, handle an empty response
-        if not r.text:
-            return self._process_empty_response(r, action_result)
-
-        # everything else is actually an error at this point
-        message = "Can't process response from server. Status Code: {0} Data from server: {1}".format(
-            r.status_code,
-            r.text.replace('{', '{{').replace('}', '}}')
-        )
-
-        return RetVal(action_result.set_status(phantom.APP_ERROR, message), None)
-
-    def _make_rest_call(self, endpoint, action_result, method="get", **kwargs):
-        # **kwargs can be any additional parameters that requests.request accepts
-
-        config = self.get_config()
-
-        resp_json = None
-
-        try:
-            request_func = getattr(requests, method)
-        except AttributeError:
-            return RetVal(
-                action_result.set_status(phantom.APP_ERROR, "Invalid method: {0}".format(method)),
-                resp_json
-            )
-
-        # Create a URL to connect to
-        url = self._base_url + endpoint
-
-        try:
-            r = request_func(
-                url,
-                # auth=(username, password),  # basic authentication
-                verify=config.get('verify_server_cert', False),
-                **kwargs
-            )
-        except Exception as e:
-            return RetVal(
-                action_result.set_status(
-                    phantom.APP_ERROR, "Error Connecting to server. Details: {0}".format(str(e))
-                ), resp_json
-            )
-
-        return self._process_response(r, action_result)
 
     def _handle_test_connectivity(self, param):
         # Add an action result object to self (BaseConnector) to represent the action for this param
@@ -203,13 +86,14 @@ class OtrsConnector(BaseConnector):
         queue = param.get('ticket_queue', '')
         type_id = param.get('ticket_type_id', '')
         priority = param.get('ticket_priority', None)
+        dynamic_fields = json.loads(param.get('dynamic_fields', '{}'))
         if priority:
             priority_id = self._priority_mapping(priority)
         else:
             priority_id = None
         
         article = self._create_article(param)
-
+        
         ticket = Ticket.create_basic(
             Title        = title,
             Queue        = queue,
@@ -219,8 +103,9 @@ class OtrsConnector(BaseConnector):
             TypeID       = type_id
         )
         try:
-            if self.client.session_restore_or_create():    
-                created_ticket = self.client.ticket_create(ticket, article)
+            if self.client.session_restore_or_create():
+                df = [DynamicField(k, dynamic_fields[k]) for k in dynamic_fields]
+                created_ticket = self.client.ticket_create(ticket, article, dynamic_fields=df)
                 action_result.add_data({"TicketID": created_ticket['TicketID']})
                 ret_val = True
         except:
@@ -236,7 +121,8 @@ class OtrsConnector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         ticket_id = param['ticket_id']
-        
+        dynamic_fields = json.loads(param.get('dynamic_fields', '{}'))
+
         priority = param.get('ticket_priority', None)
         if priority:
             priority_id = self._priority_mapping(priority)
@@ -255,7 +141,30 @@ class OtrsConnector(BaseConnector):
         lock = param['lock']
         try:
             self.client.session_restore_or_create()
-            response = self.client.ticket_update(ticket_id, article=article, Lock=lock, PriorityID=priority_id)
+            df = [DynamicField(k, dynamic_fields[k]) for k in dynamic_fields]
+            response = self.client.ticket_update(ticket_id, article=article, State=state, Lock=lock, PriorityID=priority_id, dynamic_fields=df)
+            ret_val = True
+        except:
+            ret_val = False
+               
+        if phantom.is_fail(ret_val):
+            return action_result.set_status(phantom.APP_ERROR)
+        action_result.add_data(response)
+        
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _set_ticket_pending(self, param):
+        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        action_result = self.add_action_result(ActionResult(dict(param)))
+
+        ticket_id = param['ticket_id']
+        new_state = param['new_state']
+        pending_days = int(param['pending_days'])
+        pending_hours = int(param['pending_hours'])
+
+        try:
+            self.client.session_restore_or_create()
+            response = self.client.ticket_update_set_pending(ticket_id, new_state, pending_days, pending_hours)
             ret_val = True
         except:
             ret_val = False
@@ -323,6 +232,9 @@ class OtrsConnector(BaseConnector):
 
         if action_id == 'update_ticket':
             ret_val = self._handle_update_ticket(param)
+
+        if action_id == 'set_ticket_pending':
+            ret_val = self._set_ticket_pending(param)
 
         if action_id == 'test_connectivity':
             ret_val = self._handle_test_connectivity(param)
