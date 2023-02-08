@@ -15,8 +15,29 @@ from phantom.action_result import ActionResult
 import requests
 import json
 from bs4 import BeautifulSoup
-from pyotrs import Client, Ticket, Article, DynamicField
+from pyotrs import Ticket, Article, DynamicField
+from pyotrs import Client as OldClient
 
+class Client(OldClient):
+
+    def session_restore_or_create(self):        
+        """
+        # Method to workaround pyOTRS issue. In case session restore fails
+        # We will remove the cache file under self.session_id_file and retry
+        """
+
+        try:
+            super().session_restore_or_create()
+            return True
+        except Exception as e:
+            try:
+                if os.path.exists(self.session_id_store.file_path):
+                    os.remove(self.session_id_store.file_path)
+                super().session_restore_or_create()
+                return True
+            except Exception as e:
+                fName = lambda n=0: sys._getframe(n + 1).f_code.co_name
+                raise Exception(f"<{fName()}> {repr(e)}")
 
 class RetVal(tuple):
     def __new__(cls, val1, val2=None):
@@ -65,15 +86,15 @@ class OtrsConnector(BaseConnector):
                     }
                 )
 
-            action_result.add_data(article.to_dct())
+            # action_result.add_data(article.to_dct())
             ret_val = True
         except:
             ret_val = False
                     
         if phantom.is_fail(ret_val):
-            pass 
+            raise Exception("Article creation failed.") 
 
-        action_result.set_status(phantom.APP_SUCCESS)
+        # action_result.set_status(phantom.APP_SUCCESS)
         return article
 
     def _handle_create_ticket(self, param):
@@ -92,7 +113,11 @@ class OtrsConnector(BaseConnector):
         else:
             priority_id = None
         
-        article = self._create_article(param)
+        try:
+            article = self._create_article(param)
+        except Exception as e:
+            action_result.add_data({"Exception": repr(e)})
+            return action_result.set_status(phantom.APP_ERROR)
         
         ticket = Ticket.create_basic(
             Title        = title,
@@ -106,7 +131,7 @@ class OtrsConnector(BaseConnector):
             if self.client.session_restore_or_create():
                 df = [DynamicField(k, dynamic_fields[k]) for k in dynamic_fields]
                 created_ticket = self.client.ticket_create(ticket, article, dynamic_fields=df)
-                action_result.add_data({"TicketID": created_ticket['TicketID']})
+                action_result.add_data(created_ticket)
                 ret_val = True
         except:
             ret_val = False
@@ -121,6 +146,11 @@ class OtrsConnector(BaseConnector):
         action_result = self.add_action_result(ActionResult(dict(param)))
 
         ticket_id = param['ticket_id']
+        ticket_owner = param.get('ticket_owner', '')
+        if not ticket_owner:
+            ticket_owner = self._username
+        ticket_queue = param.get('ticket_queue', '')
+
         dynamic_fields = json.loads(param.get('dynamic_fields', '{}'))
 
         priority = param.get('ticket_priority', None)
@@ -129,28 +159,39 @@ class OtrsConnector(BaseConnector):
         else:
             priority_id = None
         
-        state = param.get('ticket_state', None)
+        lock = param.get('lock', None)
+        if lock:
+            lock_id = self._lock_mapping(lock)
+        else:
+            lock_id = None
 
+        state = param.get('ticket_state', None)
         subject = param.get('article_subject', '')
         body = param.get('article_body', '')
         
         article = None
         if subject and body:
-            article = self._create_article(param)
+            try:
+                article = self._create_article(param)
+            except Exception as e:
+                action_result.add_data({"Exception": repr(e)})
+                return action_result.set_status(phantom.APP_ERROR)
 
-        lock = param['lock']
         try:
             self.client.session_restore_or_create()
             df = [DynamicField(k, dynamic_fields[k]) for k in dynamic_fields]
-            response = self.client.ticket_update(ticket_id, article=article, State=state, Lock=lock, PriorityID=priority_id, dynamic_fields=df)
-            ret_val = True
+            response = self.client.ticket_update(ticket_id, article=article, dynamic_fields=df, State=state, LockID=lock_id, PriorityID=priority_id, Queue=ticket_queue, Owner=ticket_owner)
+            if response:
+                ret_val = True
+            else:
+                ret_val = False
         except:
             ret_val = False
                
         if phantom.is_fail(ret_val):
             return action_result.set_status(phantom.APP_ERROR)
         action_result.add_data(response)
-        
+                       
         return action_result.set_status(phantom.APP_SUCCESS)
 
     def _set_ticket_pending(self, param):
@@ -203,6 +244,33 @@ class OtrsConnector(BaseConnector):
             return priority
         
         raise IndexError(f"Invalid Priority: {priority}. Needs to be between 1 and 5.")
+
+    def _lock_mapping(self, input):
+        LOCK_MAPPING = {
+                "UNLOCK": "1", 
+                "LOCK": "2",
+                "TMP LOCK": "3",
+        }
+
+        lock = None
+        try:
+            # check if the input string starts with an integer
+            lock = int(input[0])
+        except ValueError:
+            pass
+
+        if not lock:
+            try:
+                # otherwise try to map the string to a known priority value
+                lock = int(LOCK_MAPPING[input])
+            except KeyError:
+                raise ValueError("Invalid input")
+            
+
+        if lock > 0 and lock < 4:
+            return lock
+        
+        raise IndexError(f"Invalid Lock: {lock}. Needs to be between 1 and 3.")
 
     def _get_ticket(self, ticket_id):
         # Returns a Ticket object: <class 'pyotrs.lib.Ticket'>
@@ -260,11 +328,14 @@ class OtrsConnector(BaseConnector):
 
         try:
             self._base_url = self.config['base_url']
-            self.client = Client(self._base_url,
-                username=self.config['username'],
-                password=self.config['password'],
-                https_verify=self.config['https_verify'])
+            self._username = self.config['username']
+            self._password = self.config['password']
+            self._https_verify = self.config['https_verify']
 
+            self.client = Client(self._base_url,
+                username=self._username,
+                password=self._password,
+                https_verify=self._https_verify)
             return phantom.APP_SUCCESS
         except Exception:
             return phantom.APP_ERROR
