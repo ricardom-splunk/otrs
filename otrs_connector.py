@@ -74,7 +74,7 @@ class OtrsConnector(BaseConnector):
 
         try:
             # Add an action result object to self (BaseConnector) to represent the action for this param
-            action_result = self.add_action_result(ActionResult(dict(param)))
+            # action_result = self.add_action_result(ActionResult(dict(param)))
             subject = param.get('article_subject', '')
             body = param.get('article_body', '')
 
