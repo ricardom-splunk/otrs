@@ -12,11 +12,13 @@ from phantom.action_result import ActionResult
 
 # Usage of the consts file is recommended
 # from otrs_consts import *
+import os
 import requests
 import json
 from bs4 import BeautifulSoup
 from pyotrs import Ticket, Article, DynamicField
 from pyotrs import Client as OldClient
+
 
 class Client(OldClient):
 
@@ -287,6 +289,52 @@ class OtrsConnector(BaseConnector):
                 return False
             raise KeyError("Could not get ticket Lock status")
 
+    def _handle_search_ticket(self, param):
+        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        action_result = self.add_action_result(ActionResult(dict(param)))
+        
+        try:
+            self.client.session_restore_or_create()
+            # Example
+            # # Get my ticket (e.g. State:'new' or 'open'、Queue:'Raw'、OwnerIDs: 28)
+            # ticket_ids = client.ticket_search(States=['new', 'open'], Queues=['Raw'], OwnerIDs=[28])
+            
+            # DOCS HERE:
+            # https://pyotrs.readthedocs.io/en/latest/readme.html#search-for-tickets
+            
+            queues = param.get('queues', [])
+            owner = param.get('owner', [])
+            states = param.get('states', [])
+            ticket_ids = self.client.ticket_search(Queues=queues, Owner=owner, States=states)
+            action_result.add_data(ticket_ids)
+            ret_val = True
+        except:
+            ret_val = False
+               
+        if phantom.is_fail(ret_val):
+            return action_result.set_status(phantom.APP_ERROR)
+        
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+    def _handle_get_ticket(self, param):
+        self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
+        action_result = self.add_action_result(ActionResult(dict(param)))
+
+        
+        try:
+            ticket_id = param['ticket_id']  # made ticket_id mandatory on the JSON file
+            ticket = self._get_ticket(ticket_id)
+            action_result.add_data(ticket)
+            ret_val = True
+        except:
+            ret_val = False
+               
+        if phantom.is_fail(ret_val):
+            return action_result.set_status(phantom.APP_ERROR)
+        
+        return action_result.set_status(phantom.APP_SUCCESS)
+
+
     def handle_action(self, param):
         ret_val = phantom.APP_SUCCESS
 
@@ -306,6 +354,12 @@ class OtrsConnector(BaseConnector):
 
         if action_id == 'test_connectivity':
             ret_val = self._handle_test_connectivity(param)
+
+        if action_id == 'search_ticket':
+            ret_val = self._handle_search_ticket(param)
+            
+        if action_id == 'get_ticket':
+            ret_val = self._handle_get_ticket(param)
 
         return ret_val
 

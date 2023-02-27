@@ -565,6 +565,130 @@
                 "type": "table"
             },
             "versions": "EQ(*)"
+        },
+        {
+            "action": "search ticket",
+            "identifier": "search_ticket",
+            "description": "Search for tickets that contain the specified fields or search terms",
+            "verbose": "",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "queues": {
+                    "description": "Queues",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 0,
+                    "name": "queues"
+                },
+                "owner": {
+                    "description": "Owner",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 1,
+                    "name": "owner"
+                },
+                "states": {
+                    "description": "States",
+                    "data_type": "string",
+                    "required": false,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 2,
+                    "name": "states"
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string",
+                    "column_name": "data",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
+        },
+        {
+            "action": "get ticket",
+            "identifier": "get_ticket",
+            "description": "Get ticket artifacts from the ticket id",
+            "verbose": "",
+            "type": "generic",
+            "read_only": false,
+            "parameters": {
+                "ticket_id": {
+                    "description": "Ticket ID",
+                    "data_type": "string",
+                    "required": yes,
+                    "primary": false,
+                    "contains": [],
+                    "value_list": [],
+                    "default": "",
+                    "order": 0,
+                    "name": "ticket_id"
+                }
+            },
+            "output": [
+                {
+                    "data_path": "action_result.status",
+                    "data_type": "string",
+                    "column_name": "status",
+                    "column_order": 0
+                },
+                {
+                    "data_path": "action_result.data",
+                    "data_type": "string",
+                    "column_name": "data",
+                    "column_order": 1
+                },
+                {
+                    "data_path": "action_result.message",
+                    "data_type": "string"
+                },
+                {
+                    "data_path": "summary.total_objects",
+                    "data_type": "numeric"
+                },
+                {
+                    "data_path": "summary.total_objects_successful",
+                    "data_type": "numeric"
+                }
+            ],
+            "render": {
+                "type": "table"
+            },
+            "versions": "EQ(*)"
         }
     ]
 }
