@@ -17,6 +17,7 @@
     "main_module": "otrs_connector.py",
     "min_phantom_version": "5.2.1.78411",
     "app_wizard_version": "1.0.0",
+    "rest_handler": "otrs_connector.handle_request",
     "configuration": {
         "base_url": {
             "data_type": "string",

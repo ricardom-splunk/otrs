@@ -15,16 +15,24 @@ from phantom.action_result import ActionResult
 import os
 import requests
 import json
-from bs4 import BeautifulSoup
-from pyotrs import Ticket, Article, DynamicField
-from pyotrs import Client
+from pyotrs import Client, Ticket, Article, DynamicField
+
+from django.http import HttpResponse, JsonResponse
+from phantom_common.install_info import get_rest_base_url
+REST_BASE_URL = get_rest_base_url()
+
+def handle_request(request, path_parts):
+    import rpdb; rpdb.set_trace()
+    return JsonResponse({
+        'success': True,
+        'messages': "messages"
+    })
 
 class RetVal(tuple):
     def __new__(cls, val1, val2=None):
         return tuple.__new__(RetVal, (val1, val2))
 
 class OtrsConnector(BaseConnector):
-
     def __init__(self):
         # Call the BaseConnectors init first
         super(OtrsConnector, self).__init__()
@@ -91,8 +99,7 @@ class OtrsConnector(BaseConnector):
         if priority:
             priority_id = self._priority_mapping(priority)
         else:
-            priority_id = None
-        
+            priority_id = None        
         
         try:
             article = self._create_article(param)
@@ -312,7 +319,6 @@ class OtrsConnector(BaseConnector):
             return action_result.set_status(phantom.APP_ERROR)
         
         return action_result.set_status(phantom.APP_SUCCESS)
-
 
     def handle_action(self, param):
         ret_val = phantom.APP_SUCCESS
