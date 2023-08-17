@@ -13,12 +13,11 @@ from phantom.action_result import ActionResult
 # Usage of the consts file is recommended
 # from otrs_consts import *
 import os
-import sys
 import requests
 import json
 from bs4 import BeautifulSoup
 from pyotrs import Ticket, Article, DynamicField
-
+from pyotrs import Client
 
 class RetVal(tuple):
     def __new__(cls, val1, val2=None):
