@@ -11,7 +11,7 @@
     "product_version_regex": ".*",
     "publisher": "Splunk",
     "license": "Copyright (c) Splunk, 2023",
-    "app_version": "0.0.3-fdse",
+    "app_version": "0.0.4-fdse",
     "utctime_updated": "2023-02-08T10:45:15.732589Z",
     "package_name": "phantom_otrs",
     "main_module": "otrs_connector.py",
@@ -54,7 +54,7 @@
         "wheel": [
             {
                 "module": "requests",
-                "input_file": "wheels/shared/requests-2.27.0-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/requests-2.31.0-py3-none-any.whl"
             },
             {
                 "module": "deprecation",
@@ -62,7 +62,7 @@
             },
             {
                 "module": "PyOTRS",
-                "input_file": "wheels/shared/PyOTRS-0.12.4-py2.py3-none-any.whl"
+                "input_file": "wheels/shared/PyOTRS-1.0.1-py2.py3-none-any.whl"
             }
         ]
     },
@@ -323,7 +323,7 @@
                     [],
                     "default": "",
                     "order": 3,
-                    "name": "ticket_queue",
+                    "name": "ticket_queue"
                 },
                 "ticket_owner":
                 {
@@ -650,7 +650,7 @@
                 "ticket_id": {
                     "description": "Ticket ID",
                     "data_type": "string",
-                    "required": yes,
+                    "required": true,
                     "primary": false,
                     "contains": [],
                     "value_list": [],

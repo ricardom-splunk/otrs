@@ -13,33 +13,12 @@ from phantom.action_result import ActionResult
 # Usage of the consts file is recommended
 # from otrs_consts import *
 import os
+import sys
 import requests
 import json
 from bs4 import BeautifulSoup
 from pyotrs import Ticket, Article, DynamicField
-from pyotrs import Client as OldClient
 
-
-class Client(OldClient):
-
-    def session_restore_or_create(self):        
-        """
-        # Method to workaround pyOTRS issue. In case session restore fails
-        # We will remove the cache file under self.session_id_file and retry
-        """
-
-        try:
-            super().session_restore_or_create()
-            return True
-        except Exception as e:
-            try:
-                if os.path.exists(self.session_id_store.file_path):
-                    os.remove(self.session_id_store.file_path)
-                super().session_restore_or_create()
-                return True
-            except Exception as e:
-                fName = lambda n=0: sys._getframe(n + 1).f_code.co_name
-                raise Exception(f"<{fName()}> {repr(e)}")
 
 class RetVal(tuple):
     def __new__(cls, val1, val2=None):
