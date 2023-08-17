@@ -100,7 +100,7 @@
                 "ticket_customer_username": {
                     "description": "Customer user name",
                     "data_type": "string",
-                    "required": false,
+                    "required": true,
                     "primary": false,
                     "contains": [],
                     "value_list": [],
@@ -111,7 +111,7 @@
                 "ticket_priority": {
                     "description": "Ticket priority",
                     "data_type": "string",
-                    "required": false,
+                    "required": true,
                     "primary": false,
                     "contains": [],
                     "value_list": ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"],
@@ -133,7 +133,7 @@
                 "ticket_type_id": {
                     "description": "Ticket TypeID",
                     "data_type": "string",
-                    "required": false,
+                    "required": true,
                     "primary": false,
                     "contains": [],
                     "value_list": [],
@@ -144,7 +144,7 @@
                 "ticket_queue": {
                     "description": "Ticket queue",
                     "data_type": "string",
-                    "required": false,
+                    "required": true,
                     "primary": false,
                     "contains": [
                         "vault id"

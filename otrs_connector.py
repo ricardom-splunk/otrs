@@ -93,6 +93,7 @@ class OtrsConnector(BaseConnector):
         else:
             priority_id = None
         
+        
         try:
             article = self._create_article(param)
         except Exception as e:
@@ -254,7 +255,7 @@ class OtrsConnector(BaseConnector):
 
     def _get_ticket(self, ticket_id):
         # Returns a Ticket object: <class 'pyotrs.lib.Ticket'>
-        if self.client.session_restore_or_create():    
+        if self.client.session_restore_or_create():
             return self.client.ticket_get_by_id(ticket_id, articles=True)         
 
     def _ticket_locked(self, ticket_id):
@@ -298,14 +299,14 @@ class OtrsConnector(BaseConnector):
         self.save_progress("In action handler for: {0}".format(self.get_action_identifier()))
         action_result = self.add_action_result(ActionResult(dict(param)))
 
-        
         try:
             ticket_id = param['ticket_id']  # made ticket_id mandatory on the JSON file
             ticket = self._get_ticket(ticket_id)
-            action_result.add_data(ticket)
+            action_result.add_data(ticket.to_dct())
             ret_val = True
         except:
             ret_val = False
+        
                
         if phantom.is_fail(ret_val):
             return action_result.set_status(phantom.APP_ERROR)
@@ -434,7 +435,7 @@ def main():
         if session_id is not None:
             in_json['user_session_token'] = session_id
             connector._set_csrf_info(csrftoken, headers['Referer'])
-
+        
         ret_val = connector._handle_action(json.dumps(in_json), None)
         print(json.dumps(json.loads(ret_val), indent=4))
 
