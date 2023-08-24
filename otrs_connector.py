@@ -44,8 +44,12 @@ def handle_request(request, path_parts):
     handler_function = getattr(parser_mod, "handle_request")
 
     # Call the parser script
-    result = handler_function(request)
-    ret_val = True
+    try:
+        result = handler_function(request)
+        ret_val = True
+    except:
+        result = None
+        ret_val = False
     
     # return something to indicate the status of the operation and maybe some debug data if needed
     return JsonResponse({
