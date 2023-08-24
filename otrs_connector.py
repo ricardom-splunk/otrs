@@ -15,6 +15,7 @@ from phantom.action_result import ActionResult
 import os
 import requests
 import json
+import importlib
 from pyotrs import Client, Ticket, Article, DynamicField
 
 from django.http import HttpResponse, JsonResponse
@@ -22,10 +23,37 @@ from phantom_common.install_info import get_rest_base_url
 REST_BASE_URL = get_rest_base_url()
 
 def handle_request(request, path_parts):
-    import rpdb; rpdb.set_trace()
+    if not path_parts:
+        return HttpResponse('Incomplete path. No asset specified', status=400)
+
+    asset_name = path_parts.pop(0)
+    data = json.loads(request.body)
+    # Let's assume that the whole response.body is going to be passed to the parser script
+
+
+    params={'_filter_name': '"storm cloud"', '_filter_disabled': '"False"'}
+    response = requests.get(REST_BASE_URL + "asset", verify=False, auth=('soar_local_admin', 'password'), params=params)
+    response_json = response.json()
+    asset = response_json['data'][0]
+    code = asset['configuration'].get('custom_script')
+        
+    parser_spec = importlib.util.spec_from_loader('custom_script', loader=None)
+    parser_mod = importlib.util.module_from_spec(parser_spec)
+    exec(code, parser_mod.__dict__)
+    
+    handler_function = getattr(parser_mod, "handle_request")
+
+    # Call the parser script
+    result = handler_function(request)
+    ret_val = True
+    
+    # return something to indicate the status of the operation and maybe some debug data if needed
     return JsonResponse({
-        'success': True,
-        'messages': "messages"
+        'success': ret_val,
+        'asset_name': asset_name,
+        'data': data,
+        'exec_result': result,
+        'endpoint': path_parts
     })
 
 class RetVal(tuple):
@@ -41,6 +69,18 @@ class OtrsConnector(BaseConnector):
         self.config = None
 
     def _handle_test_connectivity(self, param):
+        # import rpdb; rpdb.set_trace()
+        # params={'_filter_name': '"storm cloud"', '_filter_disabled': '"False"'}
+        # response = requests.get(REST_BASE_URL + "asset", verify=False, auth=('soar_local_admin', 'password'), params=params)
+        # response_json = response.json()
+        # asset = response_json['data'][0]
+        # code = asset['configuration'].get('parse_script')
+        # # code = asset.get('parse_script')
+        # parser_spec = importlib.util.spec_from_loader('parse_script', loader=None)
+        # parser_mod = importlib.util.module_from_spec(parser_spec)
+        # exec(code, parser_mod.__dict__)
+
+
         # Add an action result object to self (BaseConnector) to represent the action for this param
         action_result = self.add_action_result(ActionResult(dict(param)))
         self.save_progress("Connecting to API")

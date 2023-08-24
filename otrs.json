@@ -49,6 +49,12 @@
             "order": 4,
             "description": "OTRS web service name",
             "required": false
+        },
+        "custom_script": {
+            "data_type": "file",
+            "description": "Custom Python REST handler",
+            "extensions": ".py",
+            "order": 5
         }
     },    
     "pip_dependencies": {
